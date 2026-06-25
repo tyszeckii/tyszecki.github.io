@@ -1,10 +1,311 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>My Inspiration Board</title>
+    <style>
+        :root {
+            --bg-color: #eef2f3;
+            --card-bg: #ffffff;
+            --primary-color: #6c5ce7;
+            --primary-hover: #5b4bc4;
+            --text-color: #2d3436;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #dfe6e9;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: var(--primary-color);
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Modal / Form Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-cancel {
+            background: #b2bec3;
+        }
+        .btn-cancel:hover {
+            background: #636e72;
+        }
+
+        /* Board Grid Layout */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* Card Styles */
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.1);
+        }
+
+        .card img {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #636e72;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            color: #d63031;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card:hover .delete-btn {
+            display: flex;
+        }
+    </style>
 </head>
 <body>
-    j
+
+    <header>
+        <h1>📌 My Padlet Board</h1>
+        <button class="btn" id="addCardBtn">+ Add Note</button>
+    </header>
+
+    <div class="modal" id="cardModal">
+        <div class="modal-content">
+            <h2>Create a New Note</h2>
+            <form id="noteForm">
+                <div class="form-group">
+                    <label for="noteTitle">Title</label>
+                    <input type="text" id="noteTitle" required placeholder="What's on your mind?">
+                </div>
+                <div class="form-group">
+                    <label for="noteText">Description</label>
+                    <textarea id="noteText" rows="4" placeholder="Type details here..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="noteImage">Upload Image (Optional)</label>
+                    <input type="file" id="noteImage" accept="image/*">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn">Post</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <main class="board" id="boardContainer"></main>
+
+    <script>
+        // DOM Elements
+        const addCardBtn = document.getElementById('addCardBtn');
+        const cardModal = document.getElementById('cardModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const noteForm = document.getElementById('noteForm');
+        const boardContainer = document.getElementById('boardContainer');
+
+        // Load existing notes from LocalStorage or default to empty array
+        let notes = JSON.parse(localStorage.getItem('padlet_notes')) || [];
+
+        // Open/Close Modal
+        addCardBtn.addEventListener('click', () => cardModal.style.display = 'flex');
+        cancelBtn.addEventListener('click', closeModal);
+        
+        function closeModal() {
+            cardModal.style.display = 'none';
+            noteForm.reset();
+        }
+
+        // Handle Form Submission
+        noteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const title = document.getElementById('noteTitle').value;
+            const text = document.getElementById('noteText').value;
+            const imageFile = document.getElementById('noteImage').files[0];
+
+            if (imageFile) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    saveNote(title, text, event.target.result);
+                };
+                reader.readAsDataURL(imageFile); // Converts image to string base64 format for localStorage
+            } else {
+                saveNote(title, text, null);
+            }
+        });
+
+        // Save Note Objects to Array and LocalStorage
+        function saveNote(title, text, imageData) {
+            const newNote = {
+                id: Date.now(),
+                title: title,
+                text: text,
+                image: imageData
+            };
+
+            notes.push(newNote);
+            localStorage.setItem('padlet_notes', JSON.stringify(notes));
+            renderNotes();
+            closeModal();
+        }
+
+        // Render notes to the UI
+        function renderNotes() {
+            boardContainer.innerHTML = '';
+            
+            notes.forEach(note => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                let imageHTML = note.image ? `<img src="${note.image}" alt="Note Image">` : '';
+
+                card.innerHTML = `
+                    <button class="delete-btn" onclick="deleteNote(${note.id})">&times;</button>
+                    ${imageHTML}
+                    <div class="card-body">
+                        <div class="card-title">${escapeHTML(note.title)}</div>
+                        <div class="card-text">${escapeHTML(note.text)}</div>
+                    </div>
+                `;
+                boardContainer.appendChild(card);
+            });
+        }
+
+        // Delete Note Function
+        window.deleteNote = function(id) {
+            notes = notes.filter(note => note.id !== id);
+            localStorage.setItem('padlet_notes', JSON.stringify(notes));
+            renderNotes();
+        }
+
+        // Simple XSS security helper to safely display user text
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Initial Load
+        renderNotes();
+    </script>
 </body>
 </html>
